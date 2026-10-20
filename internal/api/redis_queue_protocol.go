@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -88,16 +87,7 @@ func (s *Server) handleRedisConnection(conn net.Conn, reader *bufio.Reader) {
 		cmd := strings.ToUpper(strings.TrimSpace(args[0]))
 
 		if cmd != "AUTH" && !authed {
-			if s.mgmt != nil {
-				_, statusCode, errMsg := s.mgmt.AuthenticateManagementKey(clientIP, localClient, "")
-				if statusCode == http.StatusForbidden && strings.HasPrefix(errMsg, "IP banned due to too many failed attempts") {
-					_ = writeRedisError(writer, "ERR "+errMsg)
-				} else {
-					_ = writeRedisError(writer, "NOAUTH Authentication required.")
-				}
-			} else {
-				_ = writeRedisError(writer, "NOAUTH Authentication required.")
-			}
+			_ = writeRedisError(writer, "NOAUTH Authentication required.")
 			if !flush() {
 				return
 			}
@@ -108,16 +98,6 @@ func (s *Server) handleRedisConnection(conn net.Conn, reader *bufio.Reader) {
 		case "AUTH":
 			password, ok := parseAuthPassword(args)
 			if !ok {
-				if s.mgmt != nil {
-					_, statusCode, errMsg := s.mgmt.AuthenticateManagementKey(clientIP, localClient, "")
-					if statusCode == http.StatusForbidden && strings.HasPrefix(errMsg, "IP banned due to too many failed attempts") {
-						_ = writeRedisError(writer, "ERR "+errMsg)
-						if !flush() {
-							return
-						}
-						continue
-					}
-				}
 				_ = writeRedisError(writer, "ERR wrong number of arguments for 'auth' command")
 				if !flush() {
 					return
